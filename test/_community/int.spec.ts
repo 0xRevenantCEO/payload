@@ -6,8 +6,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import type { NextRESTClient } from '../__helpers/shared/NextRESTClient.js'
 
-import { devUser } from '../credentials.js'
 import { initPayloadInt } from '../__helpers/shared/initPayloadInt.js'
+import { devUser } from '../credentials.js'
 import { postsSlug } from './collections/Posts/index.js'
 
 let payload: Payload
@@ -74,3 +74,5 @@ describe('_Community Tests', () => {
     expect(data.doc.title).toEqual('REST API EXAMPLE')
   })
 })
+
+// temp comment
