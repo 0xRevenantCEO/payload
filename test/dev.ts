@@ -67,8 +67,13 @@ if (['admin-root'].includes(testSuiteArg)) {
 // falling back to the PAYLOAD_FRAMEWORK env var, then 'next'. The flag suffix is the
 // framework name. Resolved value is written back to the env var so downstream helpers
 // and spawned child processes (which read PAYLOAD_FRAMEWORK) stay in sync.
+//
+// Both `framework-*` keys are declared `boolean`, so minimist always includes them
+// (defaulting to `false`) even when neither flag is passed. Match only the one set to
+// `true`, otherwise the first key (`framework-next`) would always win — silently
+// overriding the `PAYLOAD_FRAMEWORK` env var and forcing every run onto Next.
 const frameworkFromFlag = Object.keys(args)
-  .find((arg) => arg.startsWith('framework-'))
+  .find((arg) => arg.startsWith('framework-') && args[arg] === true)
   ?.slice('framework-'.length)
 
 const framework = frameworkFromFlag || process.env.PAYLOAD_FRAMEWORK || 'next'

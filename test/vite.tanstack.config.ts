@@ -73,6 +73,60 @@ const testSuite = process.env.PAYLOAD_TEST_SUITE || '_community'
 const suiteDir = path.resolve(__dirname, testSuite, 'app-tanstack')
 const srcDirectory = fs.existsSync(suiteDir) ? path.relative(__dirname, suiteDir) : 'app-tanstack'
 
+// Test-suite configs (e.g. `versions`) seed uploads by reading fixture files
+// relative to the seed module: `getFileByPath(path.resolve(dirname, './image.jpg'))`,
+// where `dirname` derives from `import.meta.url`. Vite bundles the seed into the
+// server config chunk (`server/assets/config-*.js`, `server/rsc/assets/config-*.js`)
+// and rewrites `import.meta.url` to that chunk's location — so the runtime read
+// looks for the fixture next to the chunk, where it was never copied → ENOENT in
+// `onInit`. The Next.js build keeps these files resolvable; mirror that by copying
+// each suite's root-level fixture files into every server bundle's `assets/` dir.
+const FIXTURE_EXTENSIONS = new Set([
+  '.jpg',
+  '.jpeg',
+  '.png',
+  '.gif',
+  '.svg',
+  '.webp',
+  '.avif',
+  '.bmp',
+  '.ico',
+  '.pdf',
+  '.mp4',
+  '.webm',
+  '.mov',
+  '.mp3',
+  '.txt',
+  '.csv',
+])
+const copySuiteFixturesPlugin = () => {
+  const testSuiteDir = path.resolve(__dirname, testSuite)
+  const fixtures = fs.existsSync(testSuiteDir)
+    ? fs
+        .readdirSync(testSuiteDir)
+        .filter((f) => FIXTURE_EXTENSIONS.has(path.extname(f).toLowerCase()))
+    : []
+
+  return {
+    name: 'payload-copy-suite-fixtures',
+    // `writeBundle` runs once per environment build (client/ssr/rsc) with that
+    // env's output dir; copy fixtures next to the emitted `assets/` chunks so the
+    // seed's `import.meta.url`-relative read resolves in the server bundles.
+    writeBundle(options: { dir?: string }) {
+      if (!options.dir || fixtures.length === 0) {
+        return
+      }
+      const assetsDir = path.join(options.dir, 'assets')
+      if (!fs.existsSync(assetsDir)) {
+        fs.mkdirSync(assetsDir, { recursive: true })
+      }
+      for (const fixture of fixtures) {
+        fs.copyFileSync(path.join(testSuiteDir, fixture), path.join(assetsDir, fixture))
+      }
+    },
+  }
+}
+
 export default defineConfig((env) =>
   mergeConfig(
     payloadPlugin({
@@ -133,6 +187,7 @@ export default defineConfig((env) =>
           '@vercel/blob/client',
         ],
       },
+      plugins: [copySuiteFixturesPlugin()],
       customLogger: logger,
       envDir: repoRoot,
       server: {
